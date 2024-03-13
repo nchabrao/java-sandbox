@@ -36,6 +36,10 @@ public class PostgreClient {
         }
         return session;
     }
+
+    public String getDBName() {
+        return url.substring(url.lastIndexOf("/")+1,url.length());
+    }
     
 
 }

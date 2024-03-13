@@ -1,3 +1,4 @@
+import java.io.Console;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -9,39 +10,40 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-
 
 public class Agenda {
     //TODO: Write a function that takes a date as input and returns an object/hash containing the doctor's available slots for the next seven days, starting on the input date
     public static void main(String[] args){
-        String password = "eikochan";
-        int hpId = 1;
+        Console c = System.console();
+        if (c == null) {
+            System.err.println("No console.");
+            System.exit(1);
+        }
+        
+        String url = c.readLine("Enter the database connection url: ");
+        String login = c.readLine("Enter the database connection login: ");
+        char [] password = c.readPassword("Enter the database connection password: ");
+        
+        PostgreClient client = new PostgreClient(url,login,new String(password));
+        System.out.println("Connection established to "+client.getDBName());
+
+        int hpId = Integer.parseInt(c.readLine("Enter the health professional ID: "));
         LocalDate startDate = LocalDate.now();
+        int periodDays = Integer.parseInt(c.readLine("Enter the period (in days) to check for available timeslots: "));
+        int slotSize = Integer.parseInt(c.readLine("Enter the timeslot duration in minutes: "));
+
+        /* Instanciate an agenda object to run the business logic in a non static context */
         Agenda agenda = new Agenda();
 
         System.out.println("Checking available slots for 7 days starting on "+startDate);
         
-        PostgreClient client = new PostgreClient(password);
+        
         Connection session = null;
         try{
             session = client.getSession();
             System.out.println("Session opened on database "+session.getSchema());
-            List<AgendaSlot> results = agenda.getNextFreeSlots(session, hpId, startDate, 7, 60);
-            Iterator<AgendaSlot> iter = results.iterator();
-            if (!iter.hasNext()){
-                System.out.println("There are no available time slots for practitioner #"+hpId+" over 7 days starting "+startDate);
-            }
-            LocalDate currentDate = startDate;
-            AgendaSlot currentSlot;
-            while(iter.hasNext()){
-                currentSlot = iter.next();
-                if (currentSlot.getDate() != currentDate){
-                    System.out.println("********** "+currentSlot.getDate()+" **********");
-                    currentDate = currentSlot.getDate();
-                }
-                System.out.println(currentSlot);
-            }
+            List<AgendaSlot> slots = agenda.getNextFreeSlots(session, hpId, startDate, periodDays, slotSize);
+            printSlots(slots);
         }
         catch(SQLException e){
             System.out.println("Database access error: "+e.getMessage());
@@ -58,10 +60,35 @@ public class Agenda {
                 e.printStackTrace();
             }
         }
-        //TODO 3: Validate the output against the acceptance criteria
 
     }
 
+    /** Static method that prints a given list of AgendaSlot objects to the standard output */
+    public static void printSlots(List<AgendaSlot> slots){
+        Iterator<AgendaSlot> iter = slots.iterator();
+            if (!iter.hasNext()){
+                System.out.println("There are no available time slots for the given practitioner and period");
+            }
+            AgendaSlot currentSlot = null;
+            LocalDate currentDate = null;
+            //System.out.println("********** "+currentDate+" **********");
+            //System.out.println(currentSlot);
+            while(iter.hasNext()){
+                currentSlot = iter.next();
+                if (currentSlot.getDate() != currentDate){
+                    System.out.println("********** "+currentSlot.getDate()+" **********");
+                    currentDate = currentSlot.getDate();
+                }
+                System.out.println(currentSlot);
+            }
+    }
+    /** Method that checks if a health professional is available between two timestamps.
+     *  Parameters:
+     *      session - A database session to execute the read queries
+     *      hpId - The unique identifier of the corresponding health professional in the health_professionals database table
+     *      start - The starting date and time of the period over which the health professional's availibilty should be checked
+     *      end - The starting date and time of the period over which the health professional's availibilty should be checked
+     */
     public boolean isAvailable(Connection session, int hpId, LocalDateTime start, LocalDateTime end) throws SQLException{
         PreparedStatement stmt = session.prepareStatement("SELECT count(*) FROM events "
                                                                         +"WHERE event_type='opening' AND hp_id=? AND start_datetime <= ? AND end_datetime >= ? "
@@ -88,6 +115,14 @@ public class Agenda {
         return false;
     }
     
+    /** Method that builds and returns a list of available timeslots for a given health professional over a given period.
+     *  Parameters:
+     *      session - A database session to execute the read queries
+     *      hpId - The unique identifier of the corresponding health professional in the health_professionals database table
+     *      start - The starting date and time of the period over which the health professional's availibilty should be checked
+     *      periodDays - The number of days forward to check for available timeslots
+     *      slotSize - The standard slot size in minutes to use.
+     */
     public List<AgendaSlot> getNextFreeSlots(Connection session, int hpId, LocalDate startDate, int periodDays, int slotSize) throws SQLException{
         List<AgendaSlot> slotsList = new ArrayList<AgendaSlot>();
         LocalDateTime start = startDate.atTime(0,0);
@@ -129,35 +164,4 @@ public class Agenda {
         return slotsList;
     }
 
-    public List<AgendaSlot> getNextSevenFreeSlots(Connection session, int hpId, LocalDate startDate) throws SQLException{
-        List<AgendaSlot> slotsList = new ArrayList<AgendaSlot>();
-        LocalDateTime start = startDate.atTime(0,0);
-        LocalDateTime end = start.plusDays(7);
-        PreparedStatement stmt = session.prepareStatement("SELECT start_datetime, end_datetime FROM events "
-                                                            +"WHERE event_type='opening' AND hp_id=? AND start_datetime >= ? AND end_datetime <= ? "
-                                                            +"AND NOT EXISTS ("
-                                                                +"SELECT event_id FROM events "
-                                                                +"WHERE event_type='appointment' AND hp_id=? "
-                                                                +"AND ((start_datetime >= ? AND start_datetime <= ?)"
-                                                                    +"OR (end_datetime >= ? AND end_datetime <= ?)));");
-        
-        stmt.setInt(1, hpId);
-        stmt.setTimestamp(2, Timestamp.valueOf(start));
-        stmt.setTimestamp(3, Timestamp.valueOf(end));
-        stmt.setInt(4, hpId);
-        stmt.setTimestamp(5, Timestamp.valueOf(start));
-        stmt.setTimestamp(6, Timestamp.valueOf(end));
-        stmt.setTimestamp(7, Timestamp.valueOf(start));
-        stmt.setTimestamp(8, Timestamp.valueOf(end));
-        System.out.println(stmt);
-        ResultSet rs = stmt.executeQuery();
-        LocalDateTime slotStart;
-        LocalDateTime slotEnd;
-        while (rs.next()) {
-            slotStart = rs.getTimestamp(1).toLocalDateTime();
-            slotEnd = rs.getTimestamp(2).toLocalDateTime();
-            slotsList.add(new AgendaSlot(slotStart,slotEnd)); // Replace with actual column name
-        }
-        return slotsList;
-    }
 }
