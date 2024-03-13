@@ -7,9 +7,19 @@ public class PostgreClient {
 
     private String url = "jdbc:postgresql://localhost:5432/sandbox";
     private String user = "postgres";
-    private String password = "eikochan";
+    private String password;
     private Connection session = null;
 
+    public PostgreClient(String password){
+        this.password = password;
+    }
+    
+    public PostgreClient(String url, String user, String password){
+        this.url = url;
+        this.user = user;
+        this.password = password;
+    }
+    
     public Connection getSession() {
         if (session == null) {
             try{

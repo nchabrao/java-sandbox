@@ -21,10 +21,11 @@ public class PopulateDatabase {
     }
    
     public static void main(String[] args){
+        String password = args[0];
         LocalDate start_date = LocalDate.of(2024,10,5);
         int duration = 22;
         PopulateDatabase db_pop = new PopulateDatabase(start_date,duration);
-        db_pop.populate();
+        db_pop.populate(new PostgreClient(password));
     }
     
     public int getDays() {
@@ -35,11 +36,10 @@ public class PopulateDatabase {
         return start;
     }
 
-    public void populate(){
+    public void populate(PostgreClient client){
         Connection session = null;
         PreparedStatement statement = null;
         try {
-            PostgreClient client = new PostgreClient();
             session = client.getSession();
             statement = session.prepareStatement("INSERT INTO events (event_type, hp_id, start_datetime, end_datetime) values ('opening', 1, ?, ?)");
             LocalDate currentDate = AgendaUtils.skipWeekend(getStart());
