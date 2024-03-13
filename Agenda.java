@@ -66,22 +66,40 @@ public class Agenda {
     /** Static method that prints a given list of AgendaSlot objects to the standard output */
     public static void printSlots(List<AgendaSlot> slots){
         Iterator<AgendaSlot> iter = slots.iterator();
-            if (!iter.hasNext()){
-                System.out.println("There are no available time slots for the given practitioner and period");
+        if (!iter.hasNext()){
+            System.out.println("There are no available time slots for the given practitioner and period");
+        }
+        AgendaSlot currentSlot = null;
+        LocalDate currentDate = null;
+        while(iter.hasNext()){
+            currentSlot = iter.next();
+            if (currentSlot.getDate() != currentDate){
+                System.out.println("********** "+currentSlot.getDate()+" **********");
+                currentDate = currentSlot.getDate();
             }
-            AgendaSlot currentSlot = null;
-            LocalDate currentDate = null;
-            //System.out.println("********** "+currentDate+" **********");
-            //System.out.println(currentSlot);
-            while(iter.hasNext()){
-                currentSlot = iter.next();
-                if (currentSlot.getDate() != currentDate){
-                    System.out.println("********** "+currentSlot.getDate()+" **********");
-                    currentDate = currentSlot.getDate();
-                }
-                System.out.println(currentSlot);
-            }
+            System.out.println(currentSlot);
+        }
     }
+
+    public static String listSlots(List<AgendaSlot> slots){
+        StringBuilder result = new StringBuilder();
+        Iterator<AgendaSlot> iter = slots.iterator();
+        if (!iter.hasNext()){
+            result.append("There are no available time slots for the given practitioner and period</br>");
+        }
+        AgendaSlot currentSlot = null;
+        LocalDate currentDate = null;
+        while(iter.hasNext()){
+            currentSlot = iter.next();
+            if (currentSlot.getDate() != currentDate){
+                result.append("********** "+currentSlot.getDate()+" **********</br>");
+                currentDate = currentSlot.getDate();
+            }
+            result.append(currentSlot+"</br>");
+        }
+        return result.toString();
+    }
+
     /** Method that checks if a health professional is available between two timestamps.
      *  Parameters:
      *      session - A database session to execute the read queries
@@ -164,4 +182,7 @@ public class Agenda {
         return slotsList;
     }
 
+    public List<AgendaSlot> getNextFreeSlots(Connection session, int hpId) throws SQLException{
+        return this.getNextFreeSlots(session, hpId, LocalDate.now(), 7, 30);
+    }
 }
