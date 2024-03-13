@@ -21,8 +21,8 @@ public class PopulateDatabase {
     }
    
     public static void main(String[] args){
-        String password = args[0];
-        LocalDate start_date = LocalDate.of(2024,10,5);
+        String password = "eikochan";
+        LocalDate start_date = LocalDate.of(2024,11,16);
         int duration = 22;
         PopulateDatabase db_pop = new PopulateDatabase(start_date,duration);
         db_pop.populate(new PostgreClient(password));
@@ -56,15 +56,6 @@ public class PopulateDatabase {
             e.printStackTrace();
         }
         finally {
-            if (session != null) {
-                try {
-                    session.close();
-                }
-                catch(SQLException e) {
-                    System.out.println("Database access error: "+e.getMessage());
-                    e.printStackTrace();
-                }
-            }
             if (statement != null){
                 try {
                     statement.close();
@@ -74,8 +65,15 @@ public class PopulateDatabase {
                     e.printStackTrace();
                 }
             }
+            if (session != null) {
+                try {
+                    session.close();
+                }
+                catch(SQLException e) {
+                    System.out.println("Database access error: "+e.getMessage());
+                    e.printStackTrace();
+                }
+            }
         }
-    }
-
-    
+    }    
 }
