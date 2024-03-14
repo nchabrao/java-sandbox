@@ -137,7 +137,6 @@ public class Agenda {
      *      hpId - The unique identifier of the corresponding health professional in the health_professionals database table
      *      start - The starting date and time of the period over which the health professional's availibilty should be checked
      *      periodDays - The number of days forward to check for available timeslots
-     *      slotSize - The standard slot size in minutes to use.
      */
     public List<AgendaSlot> getNextFreeSlots(Connection session, int hpId, LocalDate startDate, int periodDays) throws SQLException{
         List<AgendaSlot> slotsList = new ArrayList<AgendaSlot>();
